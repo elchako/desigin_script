@@ -86,14 +86,15 @@ def convert_pdf_to_image(pdf_path, output_path, dpi=PNG_SIZE):
     с указанным разрешением (dpi).'''
     images = convert_from_path(pdf_path, dpi)
     # Сохраняем первое изображение в формате RGBA (чтобы поддерживалась прозрачность)
-    img = images[0].convert("RGBA")
+    img = images[0].convert('RGBA')
     # Загружаем пиксели изображения
     datas = img.getdata()
 
     new_data = []
     for item in datas:
         # Порог белого цвета — можно подправить (например, все светлые оттенки белого)
-        if item[0] > 200 and item[1] > 200 and item[2] > 200:  # RGB > 200 (близко к белому)
+        # RGB > 200 (близко к белому)
+        if item[0] > 200 and item[1] > 200 and item[2] > 200:
             # Заменяем белый фон на прозрачный
             new_data.append((255, 255, 255, 0))  # Прозрачность
         else:
@@ -103,48 +104,61 @@ def convert_pdf_to_image(pdf_path, output_path, dpi=PNG_SIZE):
     img.putdata(new_data)
     img.save(output_path, 'PNG')
     print(f'{pdf_path} сконвертирован в {output_path}')
+    remove(pdf_path)
 
 
-def convert_package_pdf_to_image(files_b):
-    '''Пакетная конвертация PDF в PNG'''
-    for pdf_path in files_b:
-        pdf_path = path.join(DIR_B, pdf_path)
-        if pdf_path.endswith('.png'):
-            # print(f'Файл {pdf_path} уже сконвертирован в png')
-            continue
-        elif not pdf_path.endswith('.pdf'):
-            print(f'Файл {pdf_path} должен быть в формате PDF')
-        else:
-            new_name = path.join(path.splitext(pdf_path)[0])
-            # Конвертация PDF в изображение
-            convert_pdf_to_image(pdf_path, f'{new_name}.png')
-            remove(pdf_path)
-    return sorted(list_files(DIR_B))
+def process_files(base_image_dir, overlay_image_dir, output_dir):
+    '''Применяет функции наложения изображений ко всем файлам в заданных директориях.
+    Накладывает только файлы с одинаковыми именами, игнорируя расширения.'''
 
+    # Получаем списки файлов
+    base_images = [f for f in listdir(
+        base_image_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+    overlay_files = [f for f in listdir(
+        overlay_image_dir) if f.lower().endswith(('.pdf', '.png', '.jpg', '.jpeg'))]
 
-def process_files(output_dir):
-    '''Применяет функции наложения изображений
-    ко всем файлам в заданных директориях.'''
+    # Создаем директорию для сохранения выходных файлов, если она не существует
     makedirs(output_dir, exist_ok=True)
 
-    base_images = sorted(list_files(DIR_A))
-    files_b = list_files(DIR_B)
-    vector_images = convert_package_pdf_to_image(files_b)
+    # Преобразуем списки в словари с ключами, являющимися именами файлов без расширений
+    base_images_dict = {path.splitext(f)[0]: f for f in base_images}
+    overlay_files_dict = {path.splitext(f)[0]: f for f in overlay_files}
 
-    for base_image, png_overlay_path in zip(base_images, vector_images):
-        # Накладываем PDF-изображение на базовое изображение
-        output_image = path.join(
-            output_dir, f'{path.splitext(base_image)[0]}.png')
-        overlay_images(
-            path.join(DIR_A, base_image),
-            path.join(DIR_B, png_overlay_path),
-            output_image
-        )
-        # print(f'Файл {output_image} создан')
+    # Проходим по всем файлам базовых изображений
+    for base_name, base_file in base_images_dict.items():
+        # Проверяем, есть ли соответствующее накладываемое изображение с таким же именем
+        if base_name in overlay_files_dict:
+            base_image_path = path.join(base_image_dir, base_file)
+            overlay_image_path = path.join(
+                overlay_image_dir, overlay_files_dict[base_name])
+
+            # Если накладываемое изображение в формате PDF, конвертируем его
+            if overlay_image_path.lower().endswith('.pdf'):
+                converted_overlay_image = path.join(
+                    DIR_B, f'{base_name}.png')
+                convert_pdf_to_image(overlay_image_path,
+                                     converted_overlay_image)
+                # Обновляем путь к изображению после конвертации
+                overlay_image_path = converted_overlay_image
+
+            # Генерируем путь для выходного файла
+            output_image_path = path.join(output_dir, f'{base_name}_final.png')
+
+            # Накладываем изображения
+            overlay_images(base_image_path, overlay_image_path,
+                           output_image_path)
+        else:
+            print(
+                f'Файл {base_name} не имеет соответствующего накладываемого изображения, пропускаем.')
 
 
 if __name__ == '__main__':
     create_folders()
+    base_images = sorted(list_files(DIR_A))
+    files_b = list_files(DIR_B)
+    if not base_images or not files_b:
+        exit(0)
     # имя папки выходных файлов
-    output_dir = datetime.now().strftime('%Y-%m-%d %H-%M-%S')
-    process_files(output_dir)
+    output_dir = path.join(
+        'result', datetime.now().strftime('%Y-%m-%d %H-%M-%S'))
+    process_files(DIR_A, DIR_B, output_dir)

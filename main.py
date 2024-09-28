@@ -9,18 +9,20 @@ config_name = 'conf.ini'
 conf_init = '''# позиция B на холсте A относительно левого верхнего угла
 [POSITION]
 x = 100
-y = 150
+y = 50
 
 
 [IMAGE]
 # максимальный размер B относительно размера A
-max_overlay_width = 0.40
-max_overlay_height = 0.30
+max_overlay_width = 0.50
+max_overlay_height = 0.50
 # размер конвертируемого изображения из PDF в PNG (можно не менять)
-png_size = 120
+png_size = 100
+# поворот изображения
+rotate = 0
 
-# имена папок
 [DIRS]
+# имена папок
 dir_a = A
 dir_b = B
 '''
@@ -38,6 +40,11 @@ POS_Y = int(config.get('POSITION', 'y'))
 WIDTH_B = float(config.get('IMAGE', 'max_overlay_width'))
 HEIGHT_B = float(config.get('IMAGE', 'max_overlay_height'))
 PNG_SIZE = int(config.get('IMAGE', 'png_size'))
+ROTATE = int(config.get('IMAGE', 'rotate'))
+
+
+def stop():
+    input('Для выхода нажмите любую клавишу')
 
 
 def create_folders():
@@ -52,6 +59,7 @@ def list_files(dir_name):
     if len(files) == 0:
         print(f'В папке {dir_name} пусто. Выходим')
         exit(1)
+        stop()
     return files
 
 
@@ -74,6 +82,9 @@ def overlay_images(
     if overlay_width > max_overlay_width or overlay_height > max_overlay_height:
         # Сохраняем пропорции накладываемого изображения
         overlay_image.thumbnail((max_overlay_width, max_overlay_height))
+    # если нужно повернем картинку
+    if ROTATE != 0:
+        overlay_image = overlay_image.rotate(ROTATE, expand=True)
     # Накладываем уменьшенное изображение на базовое
     base_image.paste(overlay_image, position, overlay_image)
     # Сохраняем результат
@@ -158,7 +169,9 @@ if __name__ == '__main__':
     files_b = list_files(DIR_B)
     if not base_images or not files_b:
         exit(0)
+        stop()
     # имя папки выходных файлов
     output_dir = path.join(
         'result', datetime.now().strftime('%Y-%m-%d %H-%M-%S'))
     process_files(DIR_A, DIR_B, output_dir)
+    stop()

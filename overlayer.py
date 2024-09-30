@@ -1,6 +1,7 @@
 import configparser
 from datetime import datetime
 from os import listdir, makedirs, path, remove
+import sys
 
 from pdf2image import convert_from_path
 from PIL import Image
@@ -10,7 +11,6 @@ conf_init = '''# позиция B на холсте A относительно �
 [POSITION]
 x = 100
 y = 50
-
 
 [IMAGE]
 # максимальный размер B относительно размера A
@@ -44,7 +44,8 @@ ROTATE = int(config.get('IMAGE', 'rotate'))
 
 
 def stop():
-    input('Для выхода нажмите любую клавишу')
+    input('Для выхода нажмите: ENTER')
+    sys.exit(0)
 
 
 def create_folders():
@@ -58,7 +59,6 @@ def list_files(dir_name):
     files = listdir(dir_name)
     if len(files) == 0:
         print(f'В папке {dir_name} пусто. Выходим')
-        exit(1)
         stop()
     return files
 
@@ -168,7 +168,6 @@ if __name__ == '__main__':
     base_images = sorted(list_files(DIR_A))
     files_b = list_files(DIR_B)
     if not base_images or not files_b:
-        exit(0)
         stop()
     # имя папки выходных файлов
     output_dir = path.join(

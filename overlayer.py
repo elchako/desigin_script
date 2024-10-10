@@ -95,7 +95,7 @@ def overlay_images(
 def convert_pdf_to_image(pdf_path, output_path, dpi=PNG_SIZE):
     '''Конвертирует первую страницу PDF в изображение PNG
     с указанным разрешением (dpi).'''
-    images = convert_from_path(pdf_path, dpi)
+    images = convert_from_path(pdf_path, dpi, thread_count=2, poppler_path=r'C:\poppler\Library\bin')
     # Сохраняем первое изображение в формате RGBA (чтобы поддерживалась прозрачность)
     img = images[0].convert('RGBA')
     # Загружаем пиксели изображения
@@ -147,8 +147,12 @@ def process_files(base_image_dir, overlay_image_dir, output_dir):
             if overlay_image_path.lower().endswith('.pdf'):
                 converted_overlay_image = path.join(
                     DIR_B, f'{base_name}.png')
-                convert_pdf_to_image(overlay_image_path,
-                                     converted_overlay_image)
+                try:
+                    convert_pdf_to_image(overlay_image_path,
+                                        converted_overlay_image)
+                except Exception as e:
+                    print(e)
+                    continue
                 # Обновляем путь к изображению после конвертации
                 overlay_image_path = converted_overlay_image
 
